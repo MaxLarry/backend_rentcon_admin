@@ -1,6 +1,6 @@
 const userListService = require("../services/UserList.service");
 const Admin = require("../models/Admin");
-const bcrypt = require("bcrypt");
+const bcrypt = require("bcryptjs");
 const { PropertyList, Room } = require("../models/Property_list.model");
 const { UserProfile, UserAccount } = require("../models/User.model");
 
