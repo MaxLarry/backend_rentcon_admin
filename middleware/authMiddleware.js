@@ -1,5 +1,8 @@
 const jwt = require('jsonwebtoken');
 const Admin = require('../models/Admin');
+const ActivityLog = require('../models/ActivityLogs.model');
+
+
 
 const protect = async (req, res, next) => {
   let token;
@@ -39,5 +42,21 @@ const protect = async (req, res, next) => {
   }
 };
 
+// Log activity function
+const logActivity = async (user, action, ipAddress, entityAffected, changes = '') => {
+  try {
+    const log = new ActivityLog({
+      admin_id: user._id,
+      role: user.role,
+      action,
+      entity_affected: entityAffected,
+      ip_address: ipAddress, // Capture IP address
+      changes,
+    });
+    await log.save();
+  } catch (error) {
+    console.error('Failed to log activity:', error);
+  }
+};
 
-module.exports = { protect };
+module.exports = { protect, logActivity };

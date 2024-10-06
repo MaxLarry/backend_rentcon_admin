@@ -1,7 +1,8 @@
 const express = require("express");
-const {  loginUser, } = require("../controllers/authController");
+const {  loginUser} = require("../controllers/authController");
 const { protect } = require("../middleware/authMiddleware");
 const router = express.Router();
+
 
 router.post("/login", loginUser);
 
@@ -14,7 +15,7 @@ router.get("/checkAuth", protect, (req, res) => {
     phone_num: req.user.phone_num,
     last_login: req.user.last_login,
     status: req.user.status,
-    // Include any additional fields if necessary
+    profilePicture: req.user.profilePicture,
   },} );
 });
 

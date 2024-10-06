@@ -8,9 +8,11 @@ const AdminSchema = new mongoose.Schema({
   role: { type: String, required: true },
   phone_num: { type: String, required: true },
   last_login: { type: Date },
-  status: { type: String, default: "active" }
-}, { timestamps: true }); // Automatically add created_at and updated_at fields
-
+  status: { type: String, default: "active" },
+  profilePicture: { type: String, required: false }
+}, { 
+  timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' } 
+});
 
 const Admin = mongoose.model("rentcon_admins", AdminSchema);
 module.exports = Admin;
