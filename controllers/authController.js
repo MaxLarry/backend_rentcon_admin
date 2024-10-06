@@ -37,7 +37,7 @@ const loginUser = async (req, res) => {
 
     res.cookie("token", token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production", // Use secure cookies in production
+      secure: req.secure || process.env.NODE_ENV === "production",  // Use secure cookies in production
       sameSite: "strict",
     });
 
