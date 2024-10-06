@@ -43,7 +43,7 @@ app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 const mongoose = require('mongoose');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const connectDB = require('./db');
 
 const app = express();
