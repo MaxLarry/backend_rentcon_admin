@@ -18,11 +18,15 @@ const {
   deleteUserSelected,
   updateRequestProfileStatus,
 } = require("../controllers/userListController");
+const { removeProfilePicture, uploadProfilePicture } = require("../controllers/ProfileAdminController");
 const router = express.Router();
 
 //router.get('/user-profile-requests', UserListController.getAlluserProfileRequest);
 router.get("/admin", fetchAdmins);
 router.post("/admin/add", addAdminUser);
+router.put("/admin-remove-pic/:id", removeProfilePicture);
+router.put("/admin-edit-pic/:id", uploadProfilePicture);
+
 
 router.get("/landlord", fetchAllLandlords);
 router.get("/occupant", fetchAllOccupants);

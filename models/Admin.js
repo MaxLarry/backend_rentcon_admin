@@ -9,7 +9,7 @@ const AdminSchema = new mongoose.Schema({
   phone_num: { type: String, required: true },
   last_login: { type: Date },
   status: { type: String, default: "active" },
-  profilePicture: { type: String, required: false }
+  profilePicture: { type: String, required: false, default:"" }
 }, { 
   timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' } 
 });
