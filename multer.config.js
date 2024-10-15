@@ -6,7 +6,7 @@ const cloudinary = require('./utils/cloudinary');
 const storage = new CloudinaryStorage({
     cloudinary: cloudinary,
     params: {
-        folder: 'uploads', // Folder name in Cloudinary
+        folder: 'adminprofile', // Folder name in Cloudinary
         format: async (req, file) => {
             const format = file.mimetype.split('/')[1];
             return format === 'jpeg' ? 'jpg' : format; // Convert jpeg to jpg

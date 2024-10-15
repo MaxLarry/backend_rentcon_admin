@@ -33,13 +33,15 @@ const PropertyListSchema = new Schema({
   },
   status: {
     type: String,
-    enum: ["waiting", "passed", "failed", "under review"],
-    default: "waiting",
+    enum: ["Waiting", "Approved", "Declined", "Under Review"],
+    default: "Waiting",
   },
   approved_date: { type: Date},
   rejected_date: { type: Date},
   created_at: { type: Date, default: Date.now },
   updated_at: { type: Date, default: Date.now },
+  reasonDecline: { type: [String] },
+  additionalComments: { type: String},
 });
 
 //const ListingRequest = mongoose.model("ListingRequest", listingRequestSchema);

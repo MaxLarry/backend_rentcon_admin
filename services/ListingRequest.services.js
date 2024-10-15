@@ -366,9 +366,11 @@ const getAllRejectedRequest = async () => {
           description: 1,
           status: 1,
           created_at: 1,
-          approved_date: 1,
+          rejected_date: 1,
           typeOfProperty: 1,
           location: 1,
+          reasonDecline:1,
+          additionalComments:1,
           address: {
             $concat: ["$street", ", ", "$barangay", ", ", "$city"],
           },
@@ -425,12 +427,15 @@ const getAllRejectedRequest = async () => {
           amenities: { $first: "$amenities" },
           status: { $first: "$status" },
           location: { $first: "$location" },
+          created_at: { $first: "$created_at" },
           rejected_date: { $first: "$rejected_date" },
           typeOfProperty: { $first: "$typeOfProperty" },
           property_photo: { $first: "$property_photo" },
           legal_docs: { $first: "$legal_docs" },
           address: { $first: "$address" },
           profile: { $first: "$profile" },
+          reasonDecline: { $first: "$reasonDecline" },
+          additionalComments: { $first: "$additionalComments" },
           rooms: {
             $push: {
               roomId: "$rooms.roomId",

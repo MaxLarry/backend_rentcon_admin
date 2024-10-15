@@ -1,7 +1,7 @@
 // controllers/listingRequestController.js
 const PropertyListService = require("../services/ListingRequest.services");
 const { PropertyList, Room } = require("../models/Property_list.model");
-const { logActivity } = require("../middleware/authMiddleware"); 
+const { logActivity } = require("../middleware/authMiddleware");
 
 // Get all Approved Listing Properties
 async function getAllApprovedListing(req, res) {
@@ -23,7 +23,8 @@ async function getAllApprovedListing(req, res) {
 // Get all listing requests with profiles
 async function getAllPendingRequests(req, res) {
   try {
-    const requests = await PropertyListService.getAllPendingRequestsWithProfiles();
+    const requests =
+      await PropertyListService.getAllPendingRequestsWithProfiles();
 
     if (!requests.length) {
       return res.json({ message: "No data available" });
@@ -53,10 +54,9 @@ async function getAllRejectedRequest(req, res) {
 
 const updateRequestStatus = async (req, res) => {
   const { id } = req.params;
-  const { status } = req.body;
-
+  const { status, selectedIssues, additionalComments } = req.body;
   // Validate status
-  if (!status || typeof status !== 'string') {
+  if (!status || typeof status !== "string") {
     return res.status(400).json({ message: "Valid status is required" });
   }
 
@@ -69,8 +69,21 @@ const updateRequestStatus = async (req, res) => {
       updateFields = { status, approved_date: new Date() }; // Set approved_date to current date
       break;
     case "Rejected":
+      // Validate selectedIssues and additionalComments
+      if (!selectedIssues || !Array.isArray(selectedIssues)) {
+        return res
+          .status(400)
+          .json({
+            message: "Selected issues are required and should be an array",
+          });
+      }
       action = "Rejected listing";
-      updateFields = { status, rejected_date: new Date() }; // Set rejected_date to current date
+      updateFields = {
+        status,
+        rejected_date: new Date(), // Set rejected_date to current date
+        reasonDecline: selectedIssues, // Store selected issues
+        additionalComments: additionalComments, // Store additional comments
+      };
       break;
     case "Waiting":
       action = "Cancel Review";
@@ -87,26 +100,32 @@ const updateRequestStatus = async (req, res) => {
   try {
     // Fetch the current request to get its current status
     const currentRequest = await PropertyList.findById(id);
-    
+
     if (!currentRequest) {
       return res.status(404).json({ message: "Request not found" });
     }
 
-    const oldStatus = currentRequest.status;  // Get the current status of the request
+    const oldStatus = currentRequest.status; // Get the current status of the request
 
     // Update the request status and add date fields only if they don't exist
     await PropertyList.findByIdAndUpdate(
       id,
-      { 
-        $set: updateFields 
+      {
+        $set: updateFields,
       },
       { new: true } // Return the updated document
     );
 
     // Log the activity (non-blocking)
     const changes = `Status changed from ${oldStatus} to ${status}`;
-    logActivity(req.user, action, req.ip, `Listing request with ID: ${id}`, changes).catch(err => {
-      console.error('Failed to log activity:', err);
+    logActivity(
+      req.user,
+      action,
+      req.ip,
+      `Listing request with ID: ${id}`,
+      changes
+    ).catch((err) => {
+      console.error("Failed to log activity:", err);
     });
 
     return res.json({
@@ -148,32 +167,41 @@ const deletePropertiesWithRooms = async (req, res) => {
   const { ids } = req.body; // Get the array of property IDs from the request body
 
   if (!Array.isArray(ids) || ids.length === 0) {
-      return res.status(400).json({ message: 'No property IDs provided for deletion' });
+    return res
+      .status(400)
+      .json({ message: "No property IDs provided for deletion" });
   }
 
   try {
-      // Delete the rooms associated with the properties
-      await Room.deleteMany({ propertyId: { $in: ids } });
+    // Delete the rooms associated with the properties
+    await Room.deleteMany({ propertyId: { $in: ids } });
 
-      //Delete the properties
-      const result = await PropertyList.deleteMany({ _id: { $in: ids } });
+    //Delete the properties
+    const result = await PropertyList.deleteMany({ _id: { $in: ids } });
 
-      if (result.deletedCount === 0) {
-          return res.status(404).json({ message: 'No properties found for the given IDs' });
-      }
+    if (result.deletedCount === 0) {
+      return res
+        .status(404)
+        .json({ message: "No properties found for the given IDs" });
+    }
 
-      return res.status(200).json({ message: 'Properties and associated rooms deleted successfully' });
+    return res
+      .status(200)
+      .json({
+        message: "Properties and associated rooms deleted successfully",
+      });
   } catch (error) {
-      console.error("Error deleting properties and rooms:", error);
-      return res.status(500).json({ message: 'Server error', error: error.message });
+    console.error("Error deleting properties and rooms:", error);
+    return res
+      .status(500)
+      .json({ message: "Server error", error: error.message });
   }
 };
-
 
 module.exports = {
   getAllPendingRequests,
   getAllApprovedListing,
   getAllRejectedRequest,
   updateRequestStatus,
-  deletePropertiesWithRooms
+  deletePropertiesWithRooms,
 };
