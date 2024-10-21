@@ -1,7 +1,6 @@
 const { UserAccount } = require("../models/User.model");
 const { PropertyList, Room } = require("../models/Property_list.model");
 
-
 const getAllUserCount = async () => {
   try {
     const result = await UserAccount.aggregate([
@@ -19,6 +18,27 @@ const getAllUserCount = async () => {
             { $match: { isProfileComplete: false } },
             { $count: "count" },
           ],
+          TotalCurrent30Days: [
+            {
+              $match: {
+                created_at: {
+                  $gte: new Date(new Date() - 30 * 24 * 60 * 60 * 1000),
+                },
+              },
+            },
+            { $count: "count" },
+          ],
+          TotalPrevious30Days: [
+            {
+              $match: {
+                created_at: {
+                  $gte: new Date(new Date() - 60 * 24 * 60 * 60 * 1000),
+                  $lt: new Date(new Date() - 30 * 24 * 60 * 60 * 1000),
+                },
+              },
+            },
+            { $count: "count" },
+          ],
         },
       },
       {
@@ -26,6 +46,166 @@ const getAllUserCount = async () => {
           LandlordCount: { $arrayElemAt: ["$LandlordCount.count", 0] },
           OccupantCount: { $arrayElemAt: ["$OccupantCount.count", 0] },
           UnverifiedCount: { $arrayElemAt: ["$UnverifiedCount.count", 0] },
+          TotalCurrent30Days: {
+            $arrayElemAt: ["$TotalCurrent30Days.count", 0],
+          },
+          TotalPrevious30Days: {
+            $arrayElemAt: ["$TotalPrevious30Days.count", 0],
+          },
+          percentageChange: {
+            $cond: {
+              if: {
+                $and: [
+                  {
+                    $gt: [
+                      {
+                        $ifNull: [
+                          { $arrayElemAt: ["$TotalPrevious30Days.count", 0] },
+                          0,
+                        ],
+                      },
+                      0,
+                    ],
+                  }, // Previous has value
+                  {
+                    $eq: [
+                      {
+                        $ifNull: [
+                          { $arrayElemAt: ["$TotalCurrent30Days.count", 0] },
+                          0,
+                        ],
+                      },
+                      0,
+                    ],
+                  }, // Current is 0
+                ],
+              },
+              then: -99.9, // When current is 0 and previous has value, return -99.9%
+              else: {
+                $cond: {
+                  if: {
+                    $and: [
+                      {
+                        $eq: [
+                          {
+                            $ifNull: [
+                              {
+                                $arrayElemAt: ["$TotalPrevious30Days.count", 0],
+                              },
+                              0,
+                            ],
+                          },
+                          0,
+                        ],
+                      }, // Previous is 0
+                      {
+                        $gt: [
+                          {
+                            $ifNull: [
+                              {
+                                $arrayElemAt: ["$TotalCurrent30Days.count", 0],
+                              },
+                              0,
+                            ],
+                          },
+                          0,
+                        ],
+                      }, // Current has value
+                    ],
+                  },
+                  then: 99.9, // When previous is 0 and current has value, return 100% increase
+                  else: {
+                    $cond: {
+                      if: {
+                        $and: [
+                          {
+                            $eq: [
+                              {
+                                $ifNull: [
+                                  {
+                                    $arrayElemAt: [
+                                      "$TotalPrevious30Days.count",
+                                      0,
+                                    ],
+                                  },
+                                  0,
+                                ],
+                              },
+                              0,
+                            ],
+                          }, // Both are 0
+                          {
+                            $eq: [
+                              {
+                                $ifNull: [
+                                  {
+                                    $arrayElemAt: [
+                                      "$TotalCurrent30Days.count",
+                                      0,
+                                    ],
+                                  },
+                                  0,
+                                ],
+                              },
+                              0,
+                            ],
+                          },
+                        ],
+                      },
+                      then: 0, // When both are 0, return 0%
+                      else: {
+                        // Regular percentage calculation for other cases
+                        $multiply: [
+                          {
+                            $divide: [
+                              {
+                                $subtract: [
+                                  {
+                                    $ifNull: [
+                                      {
+                                        $arrayElemAt: [
+                                          "$TotalCurrent30Days.count",
+                                          0,
+                                        ],
+                                      },
+                                      0,
+                                    ],
+                                  },
+                                  {
+                                    $ifNull: [
+                                      {
+                                        $arrayElemAt: [
+                                          "$TotalPrevious30Days.count",
+                                          0,
+                                        ],
+                                      },
+                                      0,
+                                    ],
+                                  },
+                                ],
+                              },
+                              {
+                                $ifNull: [
+                                  {
+                                    $arrayElemAt: [
+                                      "$TotalPrevious30Days.count",
+                                      0,
+                                    ],
+                                  },
+                                  0,
+                                ],
+                              },
+                            ],
+                          },
+                          100,
+                        ],
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
         },
       },
     ]);
@@ -40,7 +220,200 @@ const userRegCountService = {
   async getUserCount(timeframe) {
     const currentDate = new Date();
     let counts = [];
-
+    const result = await UserAccount.aggregate([
+      {
+        $facet: {
+          TotalCurrent30Days: [
+            {
+              $match: {
+                created_at: {
+                  $gte: new Date(new Date() - 30 * 24 * 60 * 60 * 1000), // Last 30 days
+                },
+              },
+            },
+            { $count: "count" },
+          ],
+          TotalPrevious30Days: [
+            {
+              $match: {
+                created_at: {
+                  $gte: new Date(new Date() - 60 * 24 * 60 * 60 * 1000), // From 60 to 30 days ago
+                  $lt: new Date(new Date() - 30 * 24 * 60 * 60 * 1000),
+                },
+              },
+            },
+            { $count: "count" },
+          ],
+        },
+      },
+      {
+        $project: {
+          TotalCurrent30Days: { $arrayElemAt: ["$TotalCurrent30Days.count", 0] },
+          TotalPrevious30Days: {
+            $arrayElemAt: ["$TotalPrevious30Days.count", 0],
+          },
+          percentageChange: {
+            $cond: {
+              if: {
+                $and: [
+                  {
+                    $gt: [
+                      {
+                        $ifNull: [
+                          { $arrayElemAt: ["$TotalPrevious30Days.count", 0] },
+                          0,
+                        ],
+                      },
+                      0,
+                    ],
+                  }, // Previous has value
+                  {
+                    $eq: [
+                      {
+                        $ifNull: [
+                          { $arrayElemAt: ["$TotalCurrent30Days.count", 0] },
+                          0,
+                        ],
+                      },
+                      0,
+                    ],
+                  }, // Current is 0
+                ],
+              },
+              then: -99.9, // When current is 0 and previous has value, return -99.9%
+              else: {
+                $cond: {
+                  if: {
+                    $and: [
+                      {
+                        $eq: [
+                          {
+                            $ifNull: [
+                              { $arrayElemAt: ["$TotalPrevious30Days.count", 0] },
+                              0,
+                            ],
+                          },
+                          0,
+                        ],
+                      }, // Previous is 0
+                      {
+                        $gt: [
+                          {
+                            $ifNull: [
+                              { $arrayElemAt: ["$TotalCurrent30Days.count", 0] },
+                              0,
+                            ],
+                          },
+                          0,
+                        ],
+                      }, // Current has value
+                    ],
+                  },
+                  then: 99.9, // When previous is 0 and current has value, return 100% increase
+                  else: {
+                    $cond: {
+                      if: {
+                        $and: [
+                          {
+                            $eq: [
+                              {
+                                $ifNull: [
+                                  {
+                                    $arrayElemAt: [
+                                      "$TotalPrevious30Days.count",
+                                      0,
+                                    ],
+                                  },
+                                  0,
+                                ],
+                              },
+                              0,
+                            ],
+                          }, // Both are 0
+                          {
+                            $eq: [
+                              {
+                                $ifNull: [
+                                  {
+                                    $arrayElemAt: [
+                                      "$TotalCurrent30Days.count",
+                                      0,
+                                    ],
+                                  },
+                                  0,
+                                ],
+                              },
+                              0,
+                            ],
+                          },
+                        ],
+                      },
+                      then: 0, // When both are 0, return 0%
+                      else: {
+                        // Regular percentage calculation for other cases
+                        $multiply: [
+                          {
+                            $divide: [
+                              {
+                                $subtract: [
+                                  {
+                                    $ifNull: [
+                                      {
+                                        $arrayElemAt: [
+                                          "$TotalCurrent30Days.count",
+                                          0,
+                                        ],
+                                      },
+                                      0,
+                                    ],
+                                  },
+                                  {
+                                    $ifNull: [
+                                      {
+                                        $arrayElemAt: [
+                                          "$TotalPrevious30Days.count",
+                                          0,
+                                        ],
+                                      },
+                                      0,
+                                    ],
+                                  },
+                                ],
+                              },
+                              {
+                                $ifNull: [
+                                  {
+                                    $arrayElemAt: [
+                                      "$TotalPrevious30Days.count",
+                                      0,
+                                    ],
+                                  },
+                                  0,
+                                ],
+                              },
+                            ],
+                          },
+                          100,
+                        ],
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    ]);
+  
+    // Debugging logs
+    console.log("Aggregation Result:", result);
+  
+    // const totalCurrent30Days = result[0]?.TotalCurrent30Days || 0;
+    // const totalPrevious30Days = result[0]?.TotalPrevious30Days || 0;
+    const percentageChange =
+      result[0]?.percentageChange !== null ? result[0]?.percentageChange : 0;
+  
     switch (timeframe) {
       case "24h":
         for (let i = 23; i >= 0; i -= 2) {
@@ -183,12 +556,9 @@ const userRegCountService = {
           currentStartDate = nextStartDate;
         }
         break;
-
-      default:
-        throw new Error("Invalid timeframe");
     }
 
-    return counts;
+    return { counts, percentageChange};
   },
 };
 
@@ -361,11 +731,12 @@ const getActiveUserCount = async (timeframe) => {
 
 const getAllPropertyCount = async () => {
   try {
-    const result = await PropertyList.aggregate([
+    // Aggregate the property count based on typeOfProperty
+    const countByType = await PropertyList.aggregate([
       {
         // Match only Approved properties
         $match: {
-          status: "Approved", // Adjust this value based on your actual status field
+          status: "Approved",
         },
       },
       {
@@ -384,7 +755,205 @@ const getAllPropertyCount = async () => {
         },
       },
     ]);
-    return result;
+
+    // Calculate percentage change for the last 30 days
+    const percentage = await PropertyList.aggregate([
+      {
+        $facet: {
+          TotalCurrent30Days: [
+            {
+              $match: {
+                approved_date: {
+                  $gte: new Date(new Date() - 30 * 24 * 60 * 60 * 1000), // Last 30 days
+                },
+              },
+            },
+            { $count: "count" },
+          ],
+          TotalPrevious30Days: [
+            {
+              $match: {
+                approved_date: {
+                  $gte: new Date(new Date() - 60 * 24 * 60 * 60 * 1000), // From 60 to 30 days ago
+                  $lt: new Date(new Date() - 30 * 24 * 60 * 60 * 1000),
+                },
+              },
+            },
+            { $count: "count" },
+          ],
+        },
+      },
+      {
+        $project: {
+          TotalCurrent30Days: {
+            $arrayElemAt: ["$TotalCurrent30Days.count", 0],
+          },
+          TotalPrevious30Days: {
+            $arrayElemAt: ["$TotalPrevious30Days.count", 0],
+          },
+          percentageChange: {
+            $cond: {
+              if: {
+                $and: [
+                  {
+                    $gt: [
+                      {
+                        $ifNull: [
+                          { $arrayElemAt: ["$TotalPrevious30Days.count", 0] },
+                          0,
+                        ],
+                      },
+                      0,
+                    ],
+                  }, // Previous has value
+                  {
+                    $eq: [
+                      {
+                        $ifNull: [
+                          { $arrayElemAt: ["$TotalCurrent30Days.count", 0] },
+                          0,
+                        ],
+                      },
+                      0,
+                    ],
+                  }, // Current is 0
+                ],
+              },
+              then: -99.9, // When current is 0 and previous has value, return -99.9%
+              else: {
+                $cond: {
+                  if: {
+                    $and: [
+                      {
+                        $eq: [
+                          {
+                            $ifNull: [
+                              {
+                                $arrayElemAt: ["$TotalPrevious30Days.count", 0],
+                              },
+                              0,
+                            ],
+                          },
+                          0,
+                        ],
+                      }, // Previous is 0
+                      {
+                        $gt: [
+                          {
+                            $ifNull: [
+                              {
+                                $arrayElemAt: ["$TotalCurrent30Days.count", 0],
+                              },
+                              0,
+                            ],
+                          },
+                          0,
+                        ],
+                      }, // Current has value
+                    ],
+                  },
+                  then: 99.9, // When previous is 0 and current has value, return 100% increase
+                  else: {
+                    $cond: {
+                      if: {
+                        $and: [
+                          {
+                            $eq: [
+                              {
+                                $ifNull: [
+                                  {
+                                    $arrayElemAt: [
+                                      "$TotalPrevious30Days.count",
+                                      0,
+                                    ],
+                                  },
+                                  0,
+                                ],
+                              },
+                              0,
+                            ],
+                          }, // Both are 0
+                          {
+                            $eq: [
+                              {
+                                $ifNull: [
+                                  {
+                                    $arrayElemAt: [
+                                      "$TotalCurrent30Days.count",
+                                      0,
+                                    ],
+                                  },
+                                  0,
+                                ],
+                              },
+                              0,
+                            ],
+                          },
+                        ],
+                      },
+                      then: 0, // When both are 0, return 0%
+                      else: {
+                        // Regular percentage calculation for other cases
+                        $multiply: [
+                          {
+                            $divide: [
+                              {
+                                $subtract: [
+                                  {
+                                    $ifNull: [
+                                      {
+                                        $arrayElemAt: [
+                                          "$TotalCurrent30Days.count",
+                                          0,
+                                        ],
+                                      },
+                                      0,
+                                    ],
+                                  },
+                                  {
+                                    $ifNull: [
+                                      {
+                                        $arrayElemAt: [
+                                          "$TotalPrevious30Days.count",
+                                          0,
+                                        ],
+                                      },
+                                      0,
+                                    ],
+                                  },
+                                ],
+                              },
+                              {
+                                $ifNull: [
+                                  {
+                                    $arrayElemAt: [
+                                      "$TotalPrevious30Days.count",
+                                      0,
+                                    ],
+                                  },
+                                  0,
+                                ],
+                              },
+                            ],
+                          },
+                          100,
+                        ],
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    ]);
+
+    // Log the current and previous counts for debugging
+    const percentageChange = percentage[0]?.percentageChange ?? 0; // Default to 0 if no data
+    console.log("percentage:", percentageChange);
+    // Return both results and percentage change
+    return { countByType, percentageChange };
   } catch (error) {
     throw error;
   }
@@ -594,7 +1163,9 @@ const getStatusCounts = async (timeframe) => {
           created_at: { $gte: startMonth, $lt: nextMonth },
         });
 
-        const monthLabel = startMonth.toLocaleString("en-US", { month: "long" });
+        const monthLabel = startMonth.toLocaleString("en-US", {
+          month: "long",
+        });
 
         counts.push({
           month: monthLabel,
@@ -662,7 +1233,7 @@ const getPropertyCountByBarangay = async () => {
     const data = await PropertyList.aggregate([
       {
         $match: {
-         status: "Approved",
+          status: "Approved",
         },
       },
       {
@@ -694,45 +1265,44 @@ const getPropertyCountByBarangay = async () => {
   } catch (error) {
     throw error;
   }
-}
-
+};
 
 const getAveragePriceByPropertyType = async (req, res) => {
   try {
     const averagePrices = await Room.aggregate([
       {
         $lookup: {
-          from: 'listing_properties', // Assuming 'listing_property' is your property collection
-          localField: 'propertyId',  // Field in Rooms collection
-          foreignField: '_id',       // Field in PropertyList collection
-          as: 'propertyDetails',     // Name of the array containing the joined property data
+          from: "listing_properties", // Assuming 'listing_property' is your property collection
+          localField: "propertyId", // Field in Rooms collection
+          foreignField: "_id", // Field in PropertyList collection
+          as: "propertyDetails", // Name of the array containing the joined property data
         },
       },
       {
-        $unwind: '$propertyDetails',  // Unwind to convert the array into an object
+        $unwind: "$propertyDetails", // Unwind to convert the array into an object
       },
       {
         // Group rooms by property ID and calculate the average price of rooms for each property
         $group: {
-          _id: '$propertyId',         // Group by property ID
-          typeOfProperty: { $first: '$propertyDetails.typeOfProperty' },  // Get property type
-          averagePricePerProperty: { $avg: '$price' },  // Calculate average price of rooms for each property
+          _id: "$propertyId", // Group by property ID
+          typeOfProperty: { $first: "$propertyDetails.typeOfProperty" }, // Get property type
+          averagePricePerProperty: { $avg: "$price" }, // Calculate average price of rooms for each property
         },
       },
       {
         // Now, group by typeOfProperty to calculate the overall average price per property type
         $group: {
-          _id: '$typeOfProperty',                     // Group by property type (Apartment/Boarding House)
-          averagePrice: { $avg: '$averagePricePerProperty' },  // Average price across all properties of that type
-          totalProperties: { $sum: 1 },               // Count total number of properties per type
+          _id: "$typeOfProperty", // Group by property type (Apartment/Boarding House)
+          averagePrice: { $avg: "$averagePricePerProperty" }, // Average price across all properties of that type
+          totalProperties: { $sum: 1 }, // Count total number of properties per type
         },
       },
       {
         // Format the output
         $project: {
           _id: 0,
-          propertyType: '$_id',               // Property type (Apartment or Boarding House)
-          averagePrice: { $round: ['$averagePrice', 2] },  // Round to 2 decimal places
+          propertyType: "$_id", // Property type (Apartment or Boarding House)
+          averagePrice: { $round: ["$averagePrice", 2] }, // Round to 2 decimal places
           totalProperties: 1,
         },
       },
@@ -743,6 +1313,357 @@ const getAveragePriceByPropertyType = async (req, res) => {
     throw error;
   }
 };
+const getRequestCounts = async (timeframe) => {
+  const counts = [];
+  const currentDate = new Date();
+
+  // Calculate percentage change for the last 30 days
+  const result = await PropertyList.aggregate([
+    {
+      $facet: {
+        TotalCurrent30Days: [
+          {
+            $match: {
+              created_at: {
+                $gte: new Date(new Date() - 30 * 24 * 60 * 60 * 1000), // Last 30 days
+              },
+            },
+          },
+          { $count: "count" },
+        ],
+        TotalPrevious30Days: [
+          {
+            $match: {
+              created_at: {
+                $gte: new Date(new Date() - 60 * 24 * 60 * 60 * 1000), // From 60 to 30 days ago
+                $lt: new Date(new Date() - 30 * 24 * 60 * 60 * 1000),
+              },
+            },
+          },
+          { $count: "count" },
+        ],
+      },
+    },
+    {
+      $project: {
+        TotalCurrent30Days: { $arrayElemAt: ["$TotalCurrent30Days.count", 0] },
+        TotalPrevious30Days: {
+          $arrayElemAt: ["$TotalPrevious30Days.count", 0],
+        },
+        percentageChange: {
+          $cond: {
+            if: {
+              $and: [
+                {
+                  $gt: [
+                    {
+                      $ifNull: [
+                        { $arrayElemAt: ["$TotalPrevious30Days.count", 0] },
+                        0,
+                      ],
+                    },
+                    0,
+                  ],
+                }, // Previous has value
+                {
+                  $eq: [
+                    {
+                      $ifNull: [
+                        { $arrayElemAt: ["$TotalCurrent30Days.count", 0] },
+                        0,
+                      ],
+                    },
+                    0,
+                  ],
+                }, // Current is 0
+              ],
+            },
+            then: -99.9, // When current is 0 and previous has value, return -99.9%
+            else: {
+              $cond: {
+                if: {
+                  $and: [
+                    {
+                      $eq: [
+                        {
+                          $ifNull: [
+                            { $arrayElemAt: ["$TotalPrevious30Days.count", 0] },
+                            0,
+                          ],
+                        },
+                        0,
+                      ],
+                    }, // Previous is 0
+                    {
+                      $gt: [
+                        {
+                          $ifNull: [
+                            { $arrayElemAt: ["$TotalCurrent30Days.count", 0] },
+                            0,
+                          ],
+                        },
+                        0,
+                      ],
+                    }, // Current has value
+                  ],
+                },
+                then: 99.9, // When previous is 0 and current has value, return 100% increase
+                else: {
+                  $cond: {
+                    if: {
+                      $and: [
+                        {
+                          $eq: [
+                            {
+                              $ifNull: [
+                                {
+                                  $arrayElemAt: [
+                                    "$TotalPrevious30Days.count",
+                                    0,
+                                  ],
+                                },
+                                0,
+                              ],
+                            },
+                            0,
+                          ],
+                        }, // Both are 0
+                        {
+                          $eq: [
+                            {
+                              $ifNull: [
+                                {
+                                  $arrayElemAt: [
+                                    "$TotalCurrent30Days.count",
+                                    0,
+                                  ],
+                                },
+                                0,
+                              ],
+                            },
+                            0,
+                          ],
+                        },
+                      ],
+                    },
+                    then: 0, // When both are 0, return 0%
+                    else: {
+                      // Regular percentage calculation for other cases
+                      $multiply: [
+                        {
+                          $divide: [
+                            {
+                              $subtract: [
+                                {
+                                  $ifNull: [
+                                    {
+                                      $arrayElemAt: [
+                                        "$TotalCurrent30Days.count",
+                                        0,
+                                      ],
+                                    },
+                                    0,
+                                  ],
+                                },
+                                {
+                                  $ifNull: [
+                                    {
+                                      $arrayElemAt: [
+                                        "$TotalPrevious30Days.count",
+                                        0,
+                                      ],
+                                    },
+                                    0,
+                                  ],
+                                },
+                              ],
+                            },
+                            {
+                              $ifNull: [
+                                {
+                                  $arrayElemAt: [
+                                    "$TotalPrevious30Days.count",
+                                    0,
+                                  ],
+                                },
+                                0,
+                              ],
+                            },
+                          ],
+                        },
+                        100,
+                      ],
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  ]);
+
+  // Debugging logs
+  console.log("Aggregation Result:", result);
+
+  // const totalCurrent30Days = result[0]?.TotalCurrent30Days || 0;
+  // const totalPrevious30Days = result[0]?.TotalPrevious30Days || 0;
+  const percentageChange =
+    result[0]?.percentageChange !== null ? result[0]?.percentageChange : 0;
+
+  // console.log("Total Current 30 Days:", totalCurrent30Days);
+  // console.log("Total Previous 30 Days:", totalPrevious30Days);
+  // console.log("Percentage Change:", percentageChange);
+
+  switch (timeframe) {
+    case "24h":
+      for (let i = 23; i >= 0; i -= 2) {
+        const startTime = new Date(currentDate);
+        startTime.setHours(currentDate.getHours() - i, 0, 0, 0);
+        const endTime = new Date(startTime);
+        endTime.setHours(endTime.getHours() + 2);
+
+        const requestCount = await PropertyList.countDocuments({
+          created_at: { $gte: startTime, $lt: endTime },
+        });
+
+        const startHourLabel = startTime.toLocaleTimeString("en-US", {
+          hour: "numeric",
+          minute: "2-digit",
+          hour12: true,
+        });
+        const endHourLabel = endTime.toLocaleTimeString("en-US", {
+          hour: "numeric",
+          minute: "2-digit",
+          hour12: true,
+        });
+
+        counts.push({
+          hours: `${startHourLabel} - ${endHourLabel}`,
+          request_count: requestCount,
+        });
+      }
+      break;
+
+    case "30d":
+      for (let i = 30; i >= 0; i--) {
+        const startDate = new Date(currentDate);
+        startDate.setDate(currentDate.getDate() - i);
+        startDate.setUTCHours(0, 0, 0, 0);
+
+        const endDate = new Date(startDate);
+        endDate.setDate(startDate.getDate() + 1); // Next day
+
+        const requestCount = await PropertyList.countDocuments({
+          created_at: { $gte: startDate, $lt: endDate },
+        });
+
+        const dateLabel = startDate.toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "short",
+          day: "numeric",
+        });
+
+        counts.push({
+          date: dateLabel,
+          request_count: requestCount,
+        });
+      }
+      break;
+
+    case "90d":
+      for (let i = 9; i >= 0; i--) {
+        const startDate = new Date(currentDate);
+        startDate.setDate(currentDate.getDate() - i * 10);
+        startDate.setUTCHours(0, 0, 0, 0);
+
+        const endDate = new Date(startDate);
+        endDate.setDate(startDate.getDate() + 10);
+
+        const requestCount = await PropertyList.countDocuments({
+          created_at: { $gte: startDate, $lt: endDate },
+        });
+
+        const startLabel = startDate.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        });
+        const endLabel = endDate.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        });
+
+        counts.push({
+          days: `${startLabel} - ${endLabel}`,
+          request_count: requestCount,
+        });
+      }
+      break;
+
+    case "1y":
+      for (let i = 11; i >= 0; i--) {
+        const startMonth = new Date(currentDate);
+        startMonth.setMonth(currentDate.getMonth() - i, 1);
+
+        const nextMonth = new Date(startMonth);
+        nextMonth.setMonth(startMonth.getMonth() + 1);
+
+        const requestCount = await PropertyList.countDocuments({
+          created_at: { $gte: startMonth, $lt: nextMonth },
+        });
+
+        const monthLabel = startMonth.toLocaleString("en-US", {
+          month: "long",
+        });
+
+        counts.push({
+          month: monthLabel,
+          request_count: requestCount,
+        });
+      }
+      break;
+
+    case "all":
+      const earliestRequest = await PropertyList.findOne(
+        {},
+        { created_at: 1 }
+      ).sort({ created_at: 1 });
+      const startDate = earliestRequest
+        ? earliestRequest.created_at
+        : currentDate;
+
+      let currentStartDate = new Date(startDate);
+      const currentEndDate = new Date(currentDate);
+
+      while (currentStartDate < currentEndDate) {
+        const nextStartDate = new Date(currentStartDate);
+        nextStartDate.setMonth(currentStartDate.getMonth() + 3);
+
+        const requestCount = await PropertyList.countDocuments({
+          created_at: { $gte: currentStartDate, $lt: nextStartDate },
+        });
+
+        counts.push({
+          date: `${currentStartDate.toLocaleString("default", {
+            month: "long",
+          })} ${currentStartDate.getFullYear()}`,
+          request_count: requestCount,
+        });
+
+        currentStartDate = nextStartDate;
+      }
+      break;
+  }
+
+  // Return the request counts along with the percentage change
+  return {
+    counts,
+    percentageChange,
+  };
+};
 
 module.exports = {
   getAllUserCount,
@@ -750,6 +1671,7 @@ module.exports = {
   getActiveUserCount,
   getAllPropertyCount,
   getStatusCounts,
+  getRequestCounts,
   getPropertyCountByBarangay,
   getAveragePriceByPropertyType,
 };

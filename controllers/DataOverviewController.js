@@ -52,21 +52,33 @@ async function getAllUserCount(req, res) {
     }
 }
 
+async function getRequestCounts(req, res) {
+  const { timeframe } = req.query; 
 
-  async function getAllPropertyCount(req, res) {
-    try {
-      const requests = await DataOverviewService.getAllPropertyCount();
-  
-      if (!requests.length) {
-        return res.json({ message: "No data available" });
-      }
-  
-      res.status(200).json(requests);
-    } catch (error) {
-      console.error("Error fetching Property Count:", error);
-      res.status(500).json({ message: "Server error" });
-    }
+  try {
+      const counts = await DataOverviewService.getRequestCounts(timeframe);
+      res.json(counts); 
+  } catch (error) {
+      console.error(error);
+      res.status(400).json({ error: error.message }); // Send back a 400 error for invalid timeframe
   }
+}
+
+async function getAllPropertyCount(req, res) {
+  try {
+    const propertyCountData = await DataOverviewService.getAllPropertyCount();
+
+    // if (!propertyCountData || !propertyCountData.countByType.length) {
+    //   return res.status(404).json({ message: "No property data available" });
+    // }
+
+    res.status(200).json(propertyCountData);
+  } catch (error) {
+    console.error("Error fetching Property Count:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+}
+
 
   async function getPropertyCount(req, res) {
     try {
@@ -103,6 +115,7 @@ module.exports ={
     userActiveCount,
     getAllPropertyCount,
     getStatusCounts,
+    getRequestCounts,
     getPropertyCount,
     averagePriceByPropertyType,
 };

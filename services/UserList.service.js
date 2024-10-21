@@ -236,7 +236,7 @@ const getAllUserRequests = async () => {
           profileId:{ $first: "$_id" },
           email: { $first: "$users.email" },
           role: { $first: "$users.role" },
-          profilePicture: { $first: "$profilePicture" },
+          profilePicture: { $first: "$users.profilePicture" },
           fullName: { $first: { $concat: ["$firstName", " ", "$lastName"] } },
           gender: { $first: "$gender" },
           contactDetails: { $first: "$contactDetails" },
