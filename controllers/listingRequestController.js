@@ -118,6 +118,7 @@ const updateRequestStatus = async (req, res) => {
 
     // Log the activity (non-blocking)
     const changes = `Status changed from ${oldStatus} to ${status}`;
+    console.log("ito ang user:", req.user);
     logActivity(
       req.user,
       action,
@@ -143,24 +144,6 @@ const updateRequestStatus = async (req, res) => {
   }
 };
 
-// const updateRequestStatus = async (req, res) => {
-//   const { id } = req.params;
-//   const { status } = req.body;
-
-//   try {
-//     const updatedRequest = await PropertyListService.updateRequestStatus(id, status);
-//     res.json(updatedRequest);
-//   } catch (error) {
-//     console.error(`Error updating status for request with ID: ${id}`, error);
-//     if (error.message === "Status is required") {
-//       return res.status(400).json({ message: error.message });
-//     }
-//     if (error.message === "Request not found") {
-//       return res.status(404).json({ message: error.message });
-//     }
-//     res.status(500).json({ message: "Server error" });
-//   }
-// };
 
 //deletion of Properties With Rooms
 const deletePropertiesWithRooms = async (req, res) => {
@@ -176,7 +159,7 @@ const deletePropertiesWithRooms = async (req, res) => {
     // Delete the rooms associated with the properties
     await Room.deleteMany({ propertyId: { $in: ids } });
 
-    //Delete the properties
+    // Delete the properties
     const result = await PropertyList.deleteMany({ _id: { $in: ids } });
 
     if (result.deletedCount === 0) {
@@ -184,6 +167,20 @@ const deletePropertiesWithRooms = async (req, res) => {
         .status(404)
         .json({ message: "No properties found for the given IDs" });
     }
+
+    // Log the activity (non-blocking)
+    const propertiesDeleted = ids.length;
+    const changes = `${propertiesDeleted} properties and their associated rooms deleted.`;
+    //console.log("ito ang user:", req.user); //debugg
+    logActivity(
+      req.user,
+      "Delete Properties",
+      req.ip,
+      `Properties with IDs: ${ids.join(", ")}`,
+      changes
+    ).catch((err) => {
+      console.error("Failed to log activity:", err);
+    });
 
     return res
       .status(200)
@@ -197,6 +194,7 @@ const deletePropertiesWithRooms = async (req, res) => {
       .json({ message: "Server error", error: error.message });
   }
 };
+
 
 module.exports = {
   getAllPendingRequests,

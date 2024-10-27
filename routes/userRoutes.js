@@ -1,4 +1,5 @@
 const express = require("express");
+const { protect } = require("../middleware/authMiddleware");
 const {
   fetchAdmins,
   addAdminUser,
@@ -33,20 +34,20 @@ router.get("/occupant", fetchAllOccupants);
 router.get("/user-request", fetchAllUserRequest);
 router.get("/unverified-user", fetchAllUnverified);
 
-router.put('/user-edit/:id', updateUser);
-router.put('/admin-edit/:id', updateAdmin);
-router.put('/update-status/:id', updateRequestProfileStatus);
+router.put('/user-edit/:id',protect, updateUser);
+router.put('/admin-edit/:id',protect, updateAdmin);
+router.put('/update-status/:id',protect, updateRequestProfileStatus);
 
-router.delete("/admin-deletion", deleteAdmin);
-router.delete("/selected-admin-deletion", deleteSelectedAdmin);
+router.delete("/admin-deletion",protect, deleteAdmin);
+router.delete("/selected-admin-deletion",protect, deleteSelectedAdmin);
 
-router.delete("/landlord-deletion", deleteUserLandlordWithPropertiesAndRooms);
-router.delete("/selected-landlord-deletion", deleteUserSelectedLandlordsandCredentials);
+router.delete("/landlord-deletion",protect, deleteUserLandlordWithPropertiesAndRooms);
+router.delete("/selected-landlord-deletion",protect, deleteUserSelectedLandlordsandCredentials);
 
-router.delete("/occupant-deletion", deleteUserOccupant);
+router.delete("/occupant-deletion",protect, deleteUserOccupant);
 router.delete("/selected-occupant-deletion", deleteUserSelectedOccupants);
 
 router.delete("/unverified-deletion", deleteUser);
-router.delete("/selected-unverified-deletion", deleteUserSelected);
+router.delete("/selected-unverified-deletion",protect, deleteUserSelected);
 
 module.exports = router;

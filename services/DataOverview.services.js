@@ -407,9 +407,9 @@ const userRegCountService = {
     ]);
   
     // Debugging logs
-    console.log("Aggregation Result:", result);
+    //console.log("Aggregation Result:", result);
   
-    // const totalCurrent30Days = result[0]?.TotalCurrent30Days || 0;
+    const totalCurrent30Days = result[0]?.TotalCurrent30Days || 0;
     // const totalPrevious30Days = result[0]?.TotalPrevious30Days || 0;
     const percentageChange =
       result[0]?.percentageChange !== null ? result[0]?.percentageChange : 0;
@@ -558,7 +558,7 @@ const userRegCountService = {
         break;
     }
 
-    return { counts, percentageChange};
+    return { counts, percentageChange,totalCurrent30Days};
   },
 };
 

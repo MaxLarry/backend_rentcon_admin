@@ -11,6 +11,6 @@ router.get('/rejected-properties', ListingRequestProperty.getAllRejectedRequest)
 router.put('/:id', protect, ListingRequestProperty.updateRequestStatus);
 
 
-router.delete('/deletion-properties', ListingRequestProperty.deletePropertiesWithRooms);
+router.delete('/deletion-properties', protect, ListingRequestProperty.deletePropertiesWithRooms);
 
 module.exports = router;
