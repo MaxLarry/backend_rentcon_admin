@@ -66,7 +66,7 @@ const updateRequestStatus = async (req, res) => {
   switch (status) {
     case "Approved":
       action = "Approved listing";
-      updateFields = { status, approved_date: new Date() }; // Set approved_date to current date
+      updateFields = { status, approved_date: new Date(), visited:0 }; // Set approved_date to current date
       break;
     case "Rejected":
       // Validate selectedIssues and additionalComments

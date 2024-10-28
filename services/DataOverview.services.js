@@ -1665,7 +1665,72 @@ const getRequestCounts = async (timeframe) => {
   };
 };
 
+
+const getTopMostVisitedApprovedProperties = async () => {
+  try {
+    const result = await PropertyList.aggregate([
+      {
+        $match: {
+          status: "Approved", 
+          visited: { $gt: "0" } // This assumes visited is still a string. Consider changing it to a Number type in your schema.
+        }
+      },
+      {
+        $lookup: {
+          from: "pending_request_profile", // Join with profiles
+          localField: "userId",
+          foreignField: "userId",
+          as: "profile"
+        }
+      },
+      {
+        $unwind: { path: "$profile", preserveNullAndEmptyArrays: true }
+      },
+      {
+        $lookup: {
+          from: "rooms", // Join with rooms
+          localField: "_id",
+          foreignField: "propertyId",
+          as: "rooms"
+        }
+      },
+      {
+        $sort: { visited: -1 } // Sort by visited count in descending order
+      },
+      {
+        $limit: 3 // Get top 3 results
+      },
+      {
+        $project: {
+          _id: 1,
+          firstName: "$profile.firstName",
+          lastName: "$profile.lastName",
+          fullName: { $concat: ["$profile.firstName", " ", "$profile.lastName"] },
+          property_photos: {
+            $filter: {
+              input: ["$photo", "$photo2", "$photo3"],
+              as: "photo",
+              cond: { $ne: ["$$photo", null] } // Exclude null photos
+            }
+          },
+          roomCount: { $size: "$rooms" }, // Count of rooms associated with the property
+          approved_date: 1,
+          last_login: "$profile.last_login", // Ensure this field exists in the profile
+          visited: 1 // Include the visited count for reference
+        }
+      }
+    ]);
+
+    return result;
+  } catch (error) {
+    console.error("Error fetching top visited properties:", error);
+    throw error; // Consider throwing a custom error if needed
+  }
+};
+
+
 module.exports = {
+  getTopMostVisitedApprovedProperties,
   getAllUserCount,
   userRegCountService,
   getActiveUserCount,

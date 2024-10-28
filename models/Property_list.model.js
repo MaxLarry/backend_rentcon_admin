@@ -40,6 +40,7 @@ const PropertyListSchema = new Schema({
   rejected_date: { type: Date},
   created_at: { type: Date, default: Date.now },
   updated_at: { type: Date, default: Date.now },
+  visited:{ type: String },
   reasonDecline: { type: [String] },
   additionalComments: { type: String},
 });
