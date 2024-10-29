@@ -1,6 +1,7 @@
 const express = require('express');
 const connectDB = require('./db');
 const dotenv = require('dotenv');
+const Agenda = require('agenda');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const authRoutes = require('./routes/authRoutes');
@@ -22,6 +23,28 @@ app.use(cors({
   credentials: true, // Allow credentials (cookies, authorization headers, etc.)
   methods: ['GET', 'POST', 'PUT', 'DELETE'], 
 }));
+
+
+const mongoConnectionString = process.env.MONGO_URI;
+const agenda = new Agenda({ db: { address: mongoConnectionString } });
+const { calculateMonthlyRates, saveMonthlyRates } = require('./services/DataOverview.services');
+
+// Define a job that runs monthly
+agenda.define('update monthly rates', async (job) => {
+  try {
+    const monthlyRates = await calculateMonthlyRates();
+    await saveMonthlyRates(monthlyRates);
+    console.log('Monthly rates updated successfully.');
+  } catch (error) {
+    console.error('Error updating monthly rates:', error);
+  }
+});
+
+// Schedule the job to run at the end of each month
+agenda.on('ready', async () => {
+  await agenda.every('0 0 1 * *', 'update monthly rates');
+  agenda.start();
+});
 
 // Routes
 app.use('/auth', authRoutes);

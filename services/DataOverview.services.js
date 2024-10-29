@@ -1,5 +1,6 @@
 const { UserAccount } = require("../models/User.model");
-const { PropertyList, Room } = require("../models/Property_list.model");
+const { PropertyList, Room, MonthlyRate} = require("../models/Property_list.model");
+
 
 const getAllUserCount = async () => {
   try {
@@ -1729,7 +1730,101 @@ const getTopMostVisitedApprovedProperties = async () => {
 };
 
 
-module.exports = {
+const monthNames = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December"
+];
+
+const calculateMonthlyRates = async () => {
+  try {
+    const ratesByMonth = await Room.aggregate([
+      {
+        $addFields: {
+          month: { $month: "$updated_at" },
+          year: { $year: "$updated_at" },
+        },
+      },
+      {
+        $group: {                                                                                                                                
+          _id: { month: "$month", year: "$year" },
+          totalRooms: { $sum: 1 },
+          vacantRooms: {
+            $sum: { $cond: [{ $eq: ["$roomStatus", "available  "] }, 1, 0] },
+          },
+          occupiedRooms: {
+            $sum: { $cond: [{ $eq: ["$roomStatus", "occupied"] }, 1, 0] },
+          },
+        },
+      },
+      {
+        $match: { totalRooms: { $gt: 0 } },
+      },
+      {
+        $addFields: {
+          vacancyRate: {
+            $round: [{ $multiply: [{ $divide: ["$vacantRooms", "$totalRooms"] }, 100] }, 2],
+          },
+          occupancyRate: {
+            $round: [{ $multiply: [{ $divide: ["$occupiedRooms", "$totalRooms"] }, 100] }, 2],
+          },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          month: {
+            $switch: {
+              branches: monthNames.map((name, index) => ({
+                case: { $eq: ["$_id.month", index + 1] },
+                then: name,
+              })),
+              default: "Unknown"
+            }
+          },
+          year: "$_id.year",
+          vacancyRate: 1,
+          occupancyRate: 1,
+        },
+      },
+      {
+        $sort: { year: 1, month: 1 },
+      },
+    ]);
+
+    return ratesByMonth;
+  } catch (error) {
+    console.error("Error calculating monthly rates:", error);
+    throw error; // Consider sending a response or logging the error.
+  }
+};
+
+const saveMonthlyRates = async (monthlyRates) => {
+  for (const rate of monthlyRates) {
+    const { month, year } = rate;
+
+    // Check if a record already exists for the given month and year
+    const existingRate = await MonthlyRate.findOne({ month, year });
+
+    if (existingRate) {
+      // Update the existing record
+      await MonthlyRate.updateOne(
+        { month, year },
+        {
+          vacancyRate: rate.vacancyRate,
+          occupancyRate: rate.occupancyRate,
+        }
+      );
+    } else {
+      // Insert new record
+      await MonthlyRate.create(rate);
+    }
+  }
+};
+
+
+module.exports = {  
+  calculateMonthlyRates,
+  saveMonthlyRates,
   getTopMostVisitedApprovedProperties,
   getAllUserCount,
   userRegCountService,

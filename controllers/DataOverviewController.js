@@ -1,4 +1,5 @@
 const DataOverviewService = require("../services/DataOverview.services");
+const {MonthlyRate} = require('../models/Property_list.model')
 
 async function getAllUserCount(req, res) {
   try {
@@ -119,6 +120,25 @@ const getTopMostVisitedApprovedProperties = async (req, res) => {
   }
 };
 
+async function getMonthlyRates(req, res) {
+  const { year } = req.query;
+
+  if (!year) {
+    return res.status(400).json({ error: 'Year parameter is required' });
+  }
+
+  try {
+    // Fetch all rates for the specified year and sort by month
+    const rates = await MonthlyRate.find({ year }).sort({ month: 1 });
+
+    // Return the rates as a response
+    res.json(rates);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to fetch monthly rates' });
+  }
+}
+
 
 module.exports = {
   getTopMostVisitedApprovedProperties,
@@ -130,4 +150,5 @@ module.exports = {
   getRequestCounts,
   getPropertyCount,
   averagePriceByPropertyType,
+  getMonthlyRates,
 };

@@ -9,7 +9,8 @@ const {
     getStatusCounts, 
     getRequestCounts,
     getPropertyCount, 
-    averagePriceByPropertyType} = require("../controllers/DataOverviewController");
+    averagePriceByPropertyType,
+    getMonthlyRates} = require("../controllers/DataOverviewController");
 
 const router = express.Router();
 
@@ -26,5 +27,6 @@ router.get("/request-listing-status", getRequestCounts);
 router.get("/property-count-barangay", getPropertyCount);
 router.get("/property-average-price", averagePriceByPropertyType);
 router.get("/property-most-viewed", getTopMostVisitedApprovedProperties);
+router.get("/monthly-rates", getMonthlyRates);
 
 module.exports = router;

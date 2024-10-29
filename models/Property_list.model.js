@@ -123,4 +123,13 @@ const roomSchema = new mongoose.Schema({
 
 const Room = mongoose.model('Room', roomSchema, 'rooms');
 
-module.exports = { Room,  PropertyList };
+const MonthlyRateSchema = new mongoose.Schema({
+  month: { type: String, required: true },  // Month name
+  year: { type: Number, required: true },   // Year
+  vacancyRate: { type: Number, required: true }, // Vacancy rate as a percentage
+  occupancyRate: { type: Number, required: true }, // Occupancy rate as a percentage
+});
+
+const MonthlyRate = mongoose.model('MonthlyRate', MonthlyRateSchema, 'monthly_rates');
+
+module.exports = { Room,  PropertyList, MonthlyRate};
