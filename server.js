@@ -19,7 +19,7 @@ app.use(express.json());
 app.use(cookieParser());
 // Middleware
 app.use(cors({
-  origin: 'http://localhost:5173', 
+  origin: 'https://backend-rentcon-admin.onrender.com', 
   credentials: true, // Allow credentials (cookies, authorization headers, etc.)
 }));
 
