@@ -27,7 +27,6 @@ router.post("/logout", (req, res) => {
     httpOnly: true,
     secure:  process.env.NODE_ENV === "production", 
     sameSite: "strict",
-    //domain: "https://backend-rentcon-admin.onrender.com/",
   });
   res.status(200).json({ message: "Logged out successfully" });
 });

@@ -17,10 +17,26 @@ connectDB();
 const app = express();
 app.use(express.json());
 app.use(cookieParser());
+const prodOrigin = [process.env.ORIGIN];
+const devOrigin = ['http://localhost:5173'];
+const allowedOrigins = process.env.NODE_ENV === "production" ? prodOrigin : devOrigin;
+
 // Middleware
 app.use(cors({
-  origin: 'https://backend-rentcon-admin.onrender.com', 
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) {
+      return callback(null, true);
+    }
+
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true, // Allow credentials (cookies, authorization headers, etc.)
+  methods: ['GET', 'POST', 'PUT', 'DELETE'], 
 }));
 
 
