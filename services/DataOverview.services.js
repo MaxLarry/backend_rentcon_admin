@@ -1749,7 +1749,7 @@ const calculateMonthlyRates = async () => {
           _id: { month: "$month", year: "$year" },
           totalRooms: { $sum: 1 },
           vacantRooms: {
-            $sum: { $cond: [{ $eq: ["$roomStatus", "available  "] }, 1, 0] },
+            $sum: { $cond: [{ $eq: ["$roomStatus", "available"] }, 1, 0] },
           },
           occupiedRooms: {
             $sum: { $cond: [{ $eq: ["$roomStatus", "occupied"] }, 1, 0] },

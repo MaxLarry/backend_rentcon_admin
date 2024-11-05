@@ -693,7 +693,20 @@ const updateRequestProfileStatus = async (req, res) => {
   }
 };
 
+
+const getOccupantsList = async (req, res) => {
+
+const { landlordId } = req.params;  
+try {
+    const occupantsList = await userListService.getOccupantsListByLandlordId(landlordId);
+    res.json(occupantsList);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 module.exports = {
+  getOccupantsList,
   fetchAdmins,
   addAdminUser,
   fetchAllLandlords,

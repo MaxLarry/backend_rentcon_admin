@@ -2,19 +2,22 @@ const ActivityLog = require('../models/ActivityLogs.model');
 const ActivityLogsService = require("../services/ActivityLogs.services")
 
 async function getAllActivityLogs(req, res) {
-    try {
-      const requests = await ActivityLogsService.getAllActivityLogs();
-  
-      if (!requests.length) {
-        return res.json({ message: "No data available" });
-      }
-  
-      res.json(requests);
-    } catch (error) {
-      console.error("Error fetching Activity logs requests:", error);
-      res.status(500).json({ message: "Server error" });
+  try {
+    const adminId = req.query.adminId || null;
+
+    // Pass the adminId to the service method
+    const requests = await ActivityLogsService.getAllActivityLogs(adminId);
+
+    if (!requests.length) {
+      return res.json({ message: "No data available" });
     }
+
+    res.json(requests);
+  } catch (error) {
+    console.error("Error fetching Activity logs requests:", error);
+    res.status(500).json({ message: "Server error" });
   }
+}
 
 
   const deleteActivityLogs = async (req, res) => {

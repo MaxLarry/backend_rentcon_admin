@@ -2,6 +2,8 @@
 const PropertyListService = require("../services/ListingRequest.services");
 const { PropertyList, Room } = require("../models/Property_list.model");
 const { logActivity } = require("../middleware/authMiddleware");
+const {sendListingRequestResponse} = require('../services/Emailer.service')
+const {UserAccount} = require('../models/User.model')
 
 // Get all Approved Listing Properties
 async function getAllApprovedListing(req, res) {
@@ -55,6 +57,7 @@ async function getAllRejectedRequest(req, res) {
 const updateRequestStatus = async (req, res) => {
   const { id } = req.params;
   const { status, selectedIssues, additionalComments } = req.body;
+
   // Validate status
   if (!status || typeof status !== "string") {
     return res.status(400).json({ message: "Valid status is required" });
@@ -62,11 +65,21 @@ const updateRequestStatus = async (req, res) => {
 
   let action;
   let updateFields = {}; // To hold the fields that will be updated
+  let emailSubject;
+  let emailBody;
 
   switch (status) {
     case "Approved":
       action = "Approved listing";
-      updateFields = { status, approved_date: new Date(), visited:0 }; // Set approved_date to current date
+      updateFields = { status, approved_date: new Date(), visited: 0 }; // Set approved_date to current date
+      emailSubject = "Your Listing Has Been Approved!";
+      emailBody = `
+        <div style="font-family: Arial, sans-serif; text-align: center;">
+          <h2>Congratulations!</h2>
+          <p>Your listing request has been approved.</p>
+          <p>Thank you for using RentConnect.</p>
+        </div>
+      `;
       break;
     case "Rejected":
       // Validate selectedIssues and additionalComments
@@ -84,6 +97,17 @@ const updateRequestStatus = async (req, res) => {
         reasonDecline: selectedIssues, // Store selected issues
         additionalComments: additionalComments, // Store additional comments
       };
+      emailSubject = "Your Listing Has Been Rejected";
+      emailBody = `
+        <div style="font-family: Arial, sans-serif; text-align: center;">
+          <h2>We're Sorry</h2>
+          <p>Your listing request has been rejected for the following reasons:</p>
+          <ul>
+            ${selectedIssues.map(issue => `<li>${issue}</li>`).join('')}
+          </ul>
+          <p>Additional Comments: ${additionalComments || "None"}</p>
+        </div>
+      `;
       break;
     case "Waiting":
       action = "Cancel Review";
@@ -106,19 +130,22 @@ const updateRequestStatus = async (req, res) => {
     }
 
     const oldStatus = currentRequest.status; // Get the current status of the request
-
+    const userAccount = await UserAccount.findById(currentRequest.userId);
+    if (!userAccount || !userAccount.email) {
+      return res.status(404).json({ message: "User or user email not found" });
+    }
+  
+    const userEmail = userAccount.email;
+    
     // Update the request status and add date fields only if they don't exist
-    await PropertyList.findByIdAndUpdate(
+    const updatedRequest = await PropertyList.findByIdAndUpdate(
       id,
-      {
-        $set: updateFields,
-      },
+      { $set: updateFields },
       { new: true } // Return the updated document
     );
 
     // Log the activity (non-blocking)
     const changes = `Status changed from ${oldStatus} to ${status}`;
-    console.log("ito ang user:", req.user);
     logActivity(
       req.user,
       action,
@@ -129,21 +156,32 @@ const updateRequestStatus = async (req, res) => {
       console.error("Failed to log activity:", err);
     });
 
+    // Send an email if the status is "Approved" or "Rejected"
+    if (status === "Approved" || status === "Rejected") {
+      sendListingRequestResponse(
+        userEmail,
+        (error, response) => {
+          if (error) {
+            console.error("Failed to send email:", error);
+          } else {
+            console.log("Email sent:", response);
+          }
+        },
+        emailSubject,
+        emailBody
+      );
+    }
+  console.log(userEmail);
     return res.json({
       message: "Request status updated successfully",
-      updatedRequest: currentRequest, // Return the original current request; you might fetch it again if needed
+      updatedRequest, // Return the updated request
     });
   } catch (error) {
     console.error(`Error updating status for request with ID: ${id}`, error);
 
-    if (error.message === "Request not found") {
-      return res.status(404).json({ message: error.message });
-    }
-
     return res.status(500).json({ message: "Server error" });
   }
 };
-
 
 //deletion of Properties With Rooms
 const deletePropertiesWithRooms = async (req, res) => {
