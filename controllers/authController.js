@@ -39,6 +39,7 @@ const loginUser = async (req, res) => {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production", // Use secure cookies in production
       sameSite: "strict",
+      path: '/',
     });
 
     res.status(200).json({ message: "Logged in successfully" });
