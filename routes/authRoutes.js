@@ -25,8 +25,9 @@ router.get("/checkAuth", protect, (req, res) => {
 router.post("/logout", (req, res) => {
   res.clearCookie("token", {
     httpOnly: true,
-    secure:  process.env.NODE_ENV === "production", 
-    sameSite: "strict",
+    secure: process.env.NODE_ENV === "production" ? true : false, // Only secure in production
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax", // Use 'none' for cross-site cookies in production
+    path: '/',
   });
   res.status(200).json({ message: "Logged out successfully" });
 });
