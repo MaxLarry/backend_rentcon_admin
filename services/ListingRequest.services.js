@@ -61,6 +61,7 @@ const getAllPendingRequestsWithProfiles = async () => {
           created_at: 1,
           typeOfProperty: 1,
           location: 1,
+          barangay: 1,
           address: {
             $concat: ["$street", ", ", "$barangay", ", ", "$city"],
           },
@@ -122,6 +123,7 @@ const getAllPendingRequestsWithProfiles = async () => {
           property_photo: { $first: "$property_photo" },
           legal_docs: { $first: "$legal_docs" },
           address: { $first: "$address" },
+          barangay: { $first: "$barangay" },
           profile: { $first: "$profile" },
           rooms: {
             $push: {
@@ -208,6 +210,7 @@ const getAllApprovedListing = async () => {
           address: {
             $concat: ["$street", ", ", "$barangay", ", ", "$city"],
           },
+          barangay: 1,
           amenities: {
             $cond: {
               if: { $isArray: "$amenities" },
@@ -267,6 +270,7 @@ const getAllApprovedListing = async () => {
           property_photo: { $first: "$property_photo" },
           legal_docs: { $first: "$legal_docs" },
           address: { $first: "$address" },
+          barangay: { $first: "$barangay" },
           profile: { $first: "$profile" },
           rooms: {
             $push: {
@@ -374,6 +378,7 @@ const getAllRejectedRequest = async () => {
           address: {
             $concat: ["$street", ", ", "$barangay", ", ", "$city"],
           },
+          barangay: 1,
           amenities: {
             $cond: {
               if: { $isArray: "$amenities" },
@@ -433,6 +438,7 @@ const getAllRejectedRequest = async () => {
           property_photo: { $first: "$property_photo" },
           legal_docs: { $first: "$legal_docs" },
           address: { $first: "$address" },
+          barangay: { $first: "$barangay" },
           profile: { $first: "$profile" },
           reasonDecline: { $first: "$reasonDecline" },
           additionalComments: { $first: "$additionalComments" },
