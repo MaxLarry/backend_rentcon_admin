@@ -17,6 +17,7 @@ connectDB();
 const app = express();
 app.use(express.json());
 app.use(cookieParser());
+//const prodOrigin = 'http://localhost:5173';
 const prodOrigin = 'https://rentconnect-admin.vercel.app';
 const devOrigin = 'http://localhost:5173';
 const allowedOrigins = process.env.NODE_ENV === "production" ? prodOrigin : devOrigin;
