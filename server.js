@@ -17,28 +17,23 @@ connectDB();
 const app = express();
 app.use(express.json());
 app.use(cookieParser());
-//const prodOrigin = 'http://localhost:5173';
-const prodOrigin = 'https://rentconnect-admin.vercel.app';
-const devOrigin = 'http://localhost:5173';
-const allowedOrigins = process.env.NODE_ENV === "production" ? prodOrigin : devOrigin;
 
 // Middleware
+const allowedOrigins = [
+  'https://rentconnect-admin.vercel.app',
+  'http://localhost:5173'
+];
+
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) {
-      return callback(null, true);
-    }
-
-    // Allow requests from specified origins
-    if (origin === allowedOrigins) {
+    if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));
     }
   },
-  credentials: true, // Allow credentials (cookies, authorization headers, etc.)
-  methods: ['GET', 'POST', 'PUT', 'DELETE'], 
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
 }));
 
 const mongoConnectionString = process.env.MONGO_URI;
