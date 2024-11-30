@@ -1012,43 +1012,6 @@ const getStatusCounts = async (timeframe) => {
       }
       break;
 
-    // case "7d":
-    //   for (let i = 6; i >= 0; i--) { // Last 7 days
-    //     const startDate = new Date(currentDate);
-    //     startDate.setDate(currentDate.getDate() - i);
-    //     startDate.setUTCHours(0, 0, 0, 0);
-    //     const endDate = new Date(startDate);
-    //     endDate.setDate(startDate.getDate() + 1); // Next day
-
-    //     const approvedCount = await PropertyList.countDocuments({
-    //       status: "Approved",
-    //       approved_date: { $gte: startDate, $lt: endDate },
-    //     });
-
-    //     const rejectedCount = await PropertyList.countDocuments({
-    //       status: "Rejected",
-    //       rejected_date: { $gte: startDate, $lt: endDate },
-    //     });
-
-    //     const requestCount = await PropertyList.countDocuments({
-    //       status: { $in: ["Waiting", "Under Review"] },
-    //       created_at: { $gte: startDate, $lt: endDate },
-    //     });
-
-    //     counts.push({
-    //       date: startDate.toLocaleDateString("en-US", {
-    //         year: "numeric",
-    //         month: "short",
-    //         day: "numeric",
-    //       }),
-    //       data: [
-    //         { status: "Approved", count: approvedCount },
-    //         { status: "Rejected", count: rejectedCount },
-    //         { status: "Request", count: requestCount },
-    //       ],
-    //     });
-    //   }
-    //   break;
 
     case "30d":
       for (let i = 30; i >= 0; i--) {
@@ -1195,20 +1158,26 @@ const getStatusCounts = async (timeframe) => {
         const nextStartDate = new Date(currentStartDate);
         nextStartDate.setMonth(currentStartDate.getMonth() + 3); // Increment by 3 months
 
-        const approvedCount = await PropertyList.countDocuments({
+        const approvedPromise = PropertyList.countDocuments({
           status: "Approved",
-          approved_date: { $gte: currentStartDate, $lt: nextStartDate },
+          approved_date: { $gte: startTime, $lt: endTime },
         });
-
-        const rejectedCount = await PropertyList.countDocuments({
+        
+        const rejectedPromise = PropertyList.countDocuments({
           status: "Rejected",
-          rejected_date: { $gte: currentStartDate, $lt: nextStartDate },
+          rejected_date: { $gte: startTime, $lt: endTime },
         });
-
-        const requestCount = await PropertyList.countDocuments({
+        
+        const requestPromise = PropertyList.countDocuments({
           status: { $in: ["Waiting", "Under Review"] },
-          created_at: { $gte: currentStartDate, $lt: nextStartDate },
+          created_at: { $gte: startTime, $lt: endTime },
         });
+        
+        const [approvedCount, rejectedCount, requestCount] = await Promise.all([
+          approvedPromise,
+          rejectedPromise,
+          requestPromise,
+        ]);
 
         counts.push({
           date: `${currentStartDate.toLocaleString("default", {
